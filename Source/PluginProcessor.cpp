@@ -108,33 +108,7 @@ void EQAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     rightChain.prepare(spec);
 
     updateFilters();
-    /*
-    auto chainSettings = getChainSettings(apvts);
-
-    updatePeakFilter(chainSettings);
-
-    // get low cut coefficients for the low cut slope filter
-    auto lowCutCoefficients = juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(chainSettings.lowCutFreq,
-                                                       sampleRate, 2*(chainSettings.lowCutSlope + 1));
-
-    //update coefficients for left and right channels depending on the slider position
-    auto& leftLowCut = leftChain.get<ChainPoistions::LowCut>();
-    updateCutFilter(leftLowCut, lowCutCoefficients, chainSettings.lowCutSlope);
- 
-    auto& rightLowCut = rightChain.get<ChainPoistions::LowCut>();
-    updateCutFilter(rightLowCut, lowCutCoefficients, chainSettings.lowCutSlope);
-
-    // get high cut coefficients for the low cut slope filter
-    auto highCutCoefficients = juce::dsp::FilterDesign<float>::designIIRLowpassHighOrderButterworthMethod(chainSettings.highCutFreq,
-        sampleRate, 2 * (chainSettings.highCutSlope + 1));
-
-    //update coefficients for left and right channels depending on the slider position
-    auto& leftHighCut = leftChain.get<ChainPoistions::HighCut>();
-    auto& rightHighCut = rightChain.get<ChainPoistions::HighCut>();
-
-    updateCutFilter(leftHighCut, highCutCoefficients, chainSettings.highCutSlope);
-    updateCutFilter(rightHighCut, highCutCoefficients, chainSettings.highCutSlope);
-    */
+    
 }
 
 void EQAudioProcessor::releaseResources()
@@ -185,31 +159,7 @@ void EQAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         buffer.clear (i, 0, buffer.getNumSamples());
 
     updateFilters();
-    /*
-    auto chainSettings = getChainSettings(apvts);
-
-    updatePeakFilter(chainSettings);
- 
-    auto cutCoefficients = juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(chainSettings.lowCutFreq,
-        getSampleRate(), 2 * (chainSettings.lowCutSlope + 1));
-
-    auto& leftLowCut = leftChain.get<ChainPoistions::LowCut>();
-    updateCutFilter(leftLowCut, cutCoefficients, chainSettings.lowCutSlope);
-
-    auto& rightLowCut = rightChain.get<ChainPoistions::LowCut>();
-    updateCutFilter(rightLowCut, cutCoefficients, chainSettings.lowCutSlope);
-
-    // get high cut coefficients for the low cut slope filter
-    auto highCutCoefficients = juce::dsp::FilterDesign<float>::designIIRLowpassHighOrderButterworthMethod(chainSettings.highCutFreq,
-        getSampleRate(), 2 * (chainSettings.highCutSlope + 1));
-
-    //update coefficients for left and right channels depending on the slider position
-    auto& leftHighCut = leftChain.get<ChainPoistions::HighCut>();
-    auto& rightHighCut = rightChain.get<ChainPoistions::HighCut>();
-
-    updateCutFilter(leftHighCut, highCutCoefficients, chainSettings.highCutSlope);
-    updateCutFilter(rightHighCut, highCutCoefficients, chainSettings.highCutSlope);
-    */
+    
     juce::dsp::AudioBlock<float> block(buffer);
 
     auto leftBlock = block.getSingleChannelBlock(0);
@@ -230,9 +180,9 @@ bool EQAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* EQAudioProcessor::createEditor()
 {
-   // return new EQAudioProcessorEditor (*this);
+   return new EQAudioProcessorEditor (*this);
 
-    return new juce::GenericAudioProcessorEditor(*this);
+   // return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -241,12 +191,22 @@ void EQAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
     // You should use this method to store your parameters in the memory block.
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
+
+    juce::MemoryOutputStream mos(destData, true);
+    apvts.state.writeToStream(mos);
+
 }
 
 void EQAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+    auto tree = juce::ValueTree::readFromData(data, sizeInBytes);
+    if (tree.isValid()) {
+        apvts.replaceState(tree);
+        updateFilters();
+    }
+
 }
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts) {
